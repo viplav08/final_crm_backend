@@ -1,5 +1,5 @@
 const express = require('express');
-import pool from '../db.js';
+const pool = require('../db'); // ✅ Notice: no ".js" needed if it's a JS file
 
 const router = express.Router();
 
