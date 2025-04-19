@@ -8,9 +8,8 @@ const pool = new Pool({
   user: 'postgres.gvoowlmoehozxsnejcvb',
   password: '<YOUR_SUPABASE_PASSWORD>', // Replace this!
   database: 'postgres',
-  ssl: {
-    rejectUnauthorized: false,
+   ssl: {
+    require: true,              // ✅ Force SSL
+    rejectUnauthorized: false,  // ✅ Allow self-signed certs
   },
 });
-
-export default pool;
