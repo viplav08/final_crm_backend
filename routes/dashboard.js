@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 import pool from '../db.js';
 
 const router = express.Router();

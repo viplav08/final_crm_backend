@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 import pool from '../db.js';
 
 const router = express.Router();
@@ -39,4 +39,5 @@ router.post('/login', async (req, res) => {
 });
 
 module.exports = router;
+
 
