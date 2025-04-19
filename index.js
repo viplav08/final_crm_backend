@@ -37,8 +37,8 @@ app.use('/api/trial-followups', trialFollowUpsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 
-// Start server
-const PORT = 5000;
+// Start server (✅ compatible with Render)
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
