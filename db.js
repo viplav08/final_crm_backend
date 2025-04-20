@@ -1,15 +1,16 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+const { Pool } = require('pg');
+require('dotenv').config();
 
-// Create and export a pool instance
 const pool = new Pool({
   host: 'aws-0-ap-south-1.pooler.supabase.com',
   port: 6543,
   user: 'postgres.gvoowlmoehozxsnejcvb',
-  password: '<YOUR_SUPABASE_PASSWORD>', // Replace this!
+  password: process.env.DB_PASSWORD,
   database: 'postgres',
-   ssl: {
-    require: true,              // ✅ Force SSL
-    rejectUnauthorized: false,  // ✅ Allow self-signed certs
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
   },
 });
+
+module.exports = pool;
