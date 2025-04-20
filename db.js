@@ -5,7 +5,7 @@ const pool = new Pool({
   host: 'aws-0-ap-south-1.pooler.supabase.com',
   port: 6543,
   user: 'postgres.gvoowlmoehozxsnejcvb',
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASSWORD, // ✅ pulled from .env
   database: 'postgres',
   ssl: {
     require: true,
