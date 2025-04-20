@@ -3,13 +3,25 @@ const pool = require("../db");
 
 const router = express.Router();
 
-// ✅ GET all packages (for full list dropdown)
+// ✅ GET all packages
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM packages");
-    res.json(result.rows); // Must return array
+    res.json(result.rows);
   } catch (err) {
     console.error("Error fetching all packages:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ✅ GET distinct commodities (MUST come before the :commodity route)
+router.get("/commodities/all", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT DISTINCT commodity FROM packages");
+    const commodities = result.rows.map((row) => row.commodity);
+    res.json(commodities);
+  } catch (err) {
+    console.error("Error fetching commodities:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -26,18 +38,6 @@ router.get("/:commodity", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching packages:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ✅ GET distinct commodities
-router.get("/commodities/all", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT DISTINCT commodity FROM packages");
-    const commodities = result.rows.map((row) => row.commodity);
-    res.json(commodities);
-  } catch (err) {
-    console.error("Error fetching commodities:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
