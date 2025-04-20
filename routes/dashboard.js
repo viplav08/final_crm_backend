@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../db'); // ✅ Notice: no ".js" needed if it's a JS file
+const pool = require('../db');
 
 const router = express.Router();
 
@@ -28,7 +28,6 @@ router.get('/', async (req, res) => {
       pool.query(`SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 AND converted_on >= ${periods.week}`, [execId]),
       pool.query(`SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 AND converted_on >= ${periods.month}`, [execId]),
 
-      // ✅ Fixed clearly below: unsubscribed_at instead of created_at
       pool.query(`SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 AND unsubscribed_at >= ${periods.today}`, [execId]),
       pool.query(`SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 AND unsubscribed_at >= ${periods.week}`, [execId]),
       pool.query(`SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 AND unsubscribed_at >= ${periods.month}`, [execId]),
@@ -39,17 +38,39 @@ router.get('/', async (req, res) => {
     ]);
 
     res.json({
-      trials: { today: trialsDay.rows[0].count, week: trialsWeek.rows[0].count, month: trialsMonth.rows[0].count },
-      converted: { today: subsDay.rows[0].count, week: subsWeek.rows[0].count, month: subsMonth.rows[0].count },
-      dropped: { today: dropsDay.rows[0].count, week: dropsWeek.rows[0].count, month: dropsMonth.rows[0].count },
-      revenue: { today: parseFloat(revDay.rows[0].sum), week: parseFloat(revWeek.rows[0].sum), month: parseFloat(revMonth.rows[0].sum) },
+      trials: {
+        today: trialsDay.rows[0].count,
+        week: trialsWeek.rows[0].count,
+        month: trialsMonth.rows[0].count,
+      },
+      converted: {
+        today: subsDay.rows[0].count,
+        week: subsWeek.rows[0].count,
+        month: subsMonth.rows[0].count,
+      },
+      dropped: {
+        today: dropsDay.rows[0].count,
+        week: dropsWeek.rows[0].count,
+        month: dropsMonth.rows[0].count,
+      },
+      revenue: {
+        today: parseFloat(revDay.rows[0].sum),
+        week: parseFloat(revWeek.rows[0].sum),
+        month: parseFloat(revMonth.rows[0].sum),
+      },
     });
 
   } catch (err) {
     console.error('❌ Dashboard error:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+
+    // 🛡️ Return safe fallback to avoid frontend crash
+    res.json({
+      trials: { today: 0, week: 0, month: 0 },
+      converted: { today: 0, week: 0, month: 0 },
+      dropped: { today: 0, week: 0, month: 0 },
+      revenue: { today: 0, week: 0, month: 0 },
+    });
   }
 });
 
 module.exports = router;
-
