@@ -42,4 +42,15 @@ router.get("/:commodity", async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM packages');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching all packages:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 module.exports = router;
