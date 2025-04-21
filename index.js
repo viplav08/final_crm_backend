@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ Allow local + deployed frontends
+// ✅ Allow local + Netlify frontend
 const allowedOrigins = [
   'http://localhost:5173',
   'https://commoditiescontrolcrm.netlify.app'
@@ -12,8 +12,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow requests with no origin (e.g., mobile apps, curl)
-    if (allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
       return callback(new Error('CORS not allowed from this origin'), false);
@@ -41,7 +40,7 @@ const dashboardRoutes = require('./routes/dashboard');
 
 // ✅ Route bindings
 app.use('/api/customer', customerRoutes);
-app.use('/api/dashboard', dashboardSummary);
+app.use('/api/dashboard', dashboardSummary); // dashboard summary
 app.use('/api/admin', pendingPayments);
 app.use('/api/admin', approvePayment);
 app.use('/api/admin', rejectPayment);
@@ -52,9 +51,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/trial-followups', trialFollowUpsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes); // main dashboard
 
-// ✅ Health check root route
+// ✅ Health check
 app.get('/', (req, res) => {
   res.send('🚀 CRM Backend Running Successfully!');
 });
