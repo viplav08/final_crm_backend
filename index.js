@@ -36,7 +36,7 @@ const paymentRoutes = require('./routes/payments');
 const packageRoutes = require('./routes/packages');
 const authRoutes = require('./routes/auth');
 const trialFollowUpsRoutes = require('./routes/trialFollowups');
-console.log("🔥 DEBUG typeof trialFollowUpsRoutes:", typeof trialFollowUpsRoutes);
+const actualTrialRoute = trialFollowUpsRoutes.default || trialFollowUpsRoutes;
 const dashboardRoutes = require('./routes/dashboard');
 
 // ✅ Route bindings
@@ -51,7 +51,7 @@ app.use('/api/followups', executiveFollowUps);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/trial-followups', trialFollowUpsRoutes);
+app.use('/api/trial-followups', actualTrialRoute);
 app.use('/api/dashboard', dashboardRoutes); // main dashboard
 
 // ✅ Health check
