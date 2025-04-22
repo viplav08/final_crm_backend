@@ -4,22 +4,24 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ Allow local + Netlify frontend
+// CORS: Allow both local + Netlify frontend
 const allowedOrigins = [
   'http://localhost:5173',
   'https://commoditiescontrolcrm.netlify.app'
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('CORS not allowed from this origin'), false);
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('CORS not allowed from this origin'), false);
+      }
+    },
+    credentials: true
+  })
+);
 
 app.use(express.json());
 
@@ -35,14 +37,14 @@ const executiveFollowUps = require('./routes/executiveFollowUps');
 const paymentRoutes = require('./routes/payments');
 const packageRoutes = require('./routes/packages');
 const authRoutes = require('./routes/auth');
-const trialFollowUpsModule = require('./routes/trialFollowups');
 const dashboardRoutes = require('./routes/dashboard');
 
-// ✅ Fix middleware issue: unwrap if needed
-const trialFollowUpsRoutes =
-  typeof trialFollowUpsModule === 'function'
-    ? trialFollowUpsModule
-    : trialFollowUpsModule.default || trialFollowUpsModule;
+// 🔥 Fix for Render hybrid import issue (trialFollowups)
+let trialFollowUpsModule = require('./routes/trialFollowups');
+if (trialFollowUpsModule && typeof trialFollowUpsModule !== 'function') {
+  console.log('🔥 trialFollowUpsModule was wrapped – unwrapping .default');
+  trialFollowUpsModule = trialFollowUpsModule.default;
+}
 
 // ✅ Route bindings
 app.use('/api/customer', customerRoutes);
@@ -56,7 +58,7 @@ app.use('/api/followups', executiveFollowUps);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/trial-followups', trialFollowUpsRoutes);
+app.use('/api/trial-followups', trialFollowUpsModule);
 app.use('/api/dashboard', dashboardRoutes); // main dashboard
 
 // ✅ Health check
