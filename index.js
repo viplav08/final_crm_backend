@@ -35,9 +35,14 @@ const executiveFollowUps = require('./routes/executiveFollowUps');
 const paymentRoutes = require('./routes/payments');
 const packageRoutes = require('./routes/packages');
 const authRoutes = require('./routes/auth');
-const trialFollowUpsRoutes = require('./routes/trialFollowups');
-const actualTrialRoute = trialFollowUpsRoutes.default || trialFollowUpsRoutes;
+const trialFollowUpsModule = require('./routes/trialFollowups');
 const dashboardRoutes = require('./routes/dashboard');
+
+// ✅ Fix middleware issue: unwrap if needed
+const trialFollowUpsRoutes =
+  typeof trialFollowUpsModule === 'function'
+    ? trialFollowUpsModule
+    : trialFollowUpsModule.default || trialFollowUpsModule;
 
 // ✅ Route bindings
 app.use('/api/customer', customerRoutes);
@@ -51,7 +56,7 @@ app.use('/api/followups', executiveFollowUps);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/trial-followups', actualTrialRoute);
+app.use('/api/trial-followups', trialFollowUpsRoutes);
 app.use('/api/dashboard', dashboardRoutes); // main dashboard
 
 // ✅ Health check
