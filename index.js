@@ -36,6 +36,7 @@ const paymentRoutes = require('./routes/payments');
 const packageRoutes = require('./routes/packages');
 const authRoutes = require('./routes/auth');
 const trialFollowUpsRoutes = require('./routes/trialFollowups');
+console.log("🔥 DEBUG typeof trialFollowUpsRoutes:", typeof trialFollowUpsRoutes);
 const dashboardRoutes = require('./routes/dashboard');
 
 // ✅ Route bindings
