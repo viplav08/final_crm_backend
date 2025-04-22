@@ -1,29 +1,46 @@
-import express from 'express';
-import cors from 'cors';
-
-import customerRoutes from './routes/customer.js';
-import dashboardSummary from './routes/dashboardSummary.js';
-import pendingPayments from './routes/pendingPayments.js';
-import approvePayment from './routes/approvePayment.js';
-import rejectPayment from './routes/rejectPayment.js';
-import submitPayment from './routes/submitPayment.js';
-import assignedClients from './routes/assignedClients.js';
-import executiveFollowUps from './routes/executiveFollowUps.js';
-import paymentRoutes from './routes/payments.js';
-import packageRoutes from './routes/packages.js';
-import authRoutes from './routes/auth.js';
-import trialFollowUpsRoutes from './routes/trialFollowUps.js';
-import dashboardRoutes from './routes/dashboard.js';
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// ✅ Allow local + Netlify frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://commoditiescontrolcrm.netlify.app'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('CORS not allowed from this origin'), false);
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
-// Route usage
+// ✅ Route imports
+const customerRoutes = require('./routes/customer');
+const dashboardSummary = require('./routes/dashboardSummary');
+const pendingPayments = require('./routes/pendingPayments');
+const approvePayment = require('./routes/approvePayment');
+const rejectPayment = require('./routes/rejectPayment');
+const submitPayment = require('./routes/submitPayment');
+const assignedClients = require('./routes/assignedClients');
+const executiveFollowUps = require('./routes/executiveFollowUps');
+const paymentRoutes = require('./routes/payments');
+const packageRoutes = require('./routes/packages');
+const authRoutes = require('./routes/auth');
+const trialFollowUpsRoutes = require('./routes/trialFollowups');
+const dashboardRoutes = require('./routes/dashboard');
+
+// ✅ Route bindings
 app.use('/api/customer', customerRoutes);
-app.use('/api/dashboard', dashboardSummary);
+app.use('/api/dashboard', dashboardSummary); // dashboard summary
 app.use('/api/admin', pendingPayments);
 app.use('/api/admin', approvePayment);
 app.use('/api/admin', rejectPayment);
@@ -34,10 +51,14 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/trial-followups', trialFollowUpsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes); // main dashboard
 
+// ✅ Health check
+app.get('/', (req, res) => {
+  res.send('🚀 CRM Backend Running Successfully!');
+});
 
-// Start server (✅ compatible with Render)
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
