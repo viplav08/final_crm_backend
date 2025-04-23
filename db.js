@@ -12,7 +12,7 @@ const pool = new Pool({
     require:            true,
     rejectUnauthorized: false
   },
-+ family:   4,        // ← force IPv4-only
+  family:   4      // force IPv4
 });
 
 module.exports = pool;
