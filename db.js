@@ -12,7 +12,7 @@ const pool = new Pool({
     require:            true,
     rejectUnauthorized: false
   },
-  family:   4      // force IPv4
+  family:   4    // ← force IPv4, avoids ENETUNREACH on IPv6
 });
 
 module.exports = pool;

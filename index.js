@@ -1,57 +1,38 @@
 // index.js
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
 require('dotenv').config();
 
 const app = express();
 
-// —— CORS Setup ——
-// Allow your local dev server and your Netlify frontend
+// CORS
 const allowedOrigins = [
   'http://localhost:5173',
   'https://commoditiescontrolcrm.netlify.app'
 ];
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed from this origin'), false);
-    }
+  origin(origin, cb) {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'), false);
   },
   credentials: true
 }));
 
-// —— JSON Body Parser ——
 app.use(express.json());
 
-// —— Route Modules ——
-const customerRoutes      = require('./routes/customer');           // :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
-const authRoutes          = require('./routes/auth');               // :contentReference[oaicite:2]{index=2}&#8203;:contentReference[oaicite:3]{index=3}
-const paymentRoutes       = require('./routes/payments');
-const assignedClients     = require('./routes/assignedClients');
-const executiveFollowUps  = require('./routes/executiveFollowUps'); // :contentReference[oaicite:4]{index=4}&#8203;:contentReference[oaicite:5]{index=5}
-const trialFollowups      = require('./routes/trialFollowups');     // :contentReference[oaicite:6]{index=6}&#8203;:contentReference[oaicite:7]{index=7}
-const packagesRoutes      = require('./routes/packages');           // :contentReference[oaicite:8]{index=8}&#8203;:contentReference[oaicite:9]{index=9}
-const dashboardRoutes     = require('./routes/dashboard');          // :contentReference[oaicite:10]{index=10}&#8203;:contentReference[oaicite:11]{index=11}
+// Routes (all must use module.exports = router)
+const customerRoutes     = require('./routes/customer');
+const authRoutes         = require('./routes/auth');
+const trialFollowups     = require('./routes/trialFollowups');
+// …and the rest…
 
-// —— Mounting Routers ——
-app.use('/api/auth',               authRoutes);
-app.use('/api/customer',           customerRoutes);
-app.use('/api/payments',           paymentRoutes);
-app.use('/api/customer/assigned',  assignedClients);
-app.use('/api/followups',          executiveFollowUps);
-app.use('/api/trial-followups',    trialFollowups);
-app.use('/api/packages',           packagesRoutes);
-app.use('/api/dashboard',          dashboardRoutes);
+app.use('/api/customer',       customerRoutes);
+app.use('/api/auth',           authRoutes);
+app.use('/api/trial-followups', trialFollowups);
+// …mount the rest at their correct paths…
 
-// —— Health Check ——
-app.get('/', (req, res) => {
-  res.send('🚀 CRM Backend Running Successfully!');
-});
+// Health check
+app.get('/', (req, res) => res.send('🚀 CRM Backend Running!'));
 
-// —— Start Server ——
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
