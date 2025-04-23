@@ -12,6 +12,7 @@ const pool = new Pool({
     require:            true,
     rejectUnauthorized: false
   },
++ family:   4,        // ← force IPv4-only
 });
 
-module.exports = pool;  // :contentReference[oaicite:12]{index=12}&#8203;:contentReference[oaicite:13]{index=13}
+module.exports = pool;
