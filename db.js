@@ -10,9 +10,9 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   ssl: {
     require:            true,
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
   },
-  family:   4    // ← force IPv4, avoids ENETUNREACH on IPv6
+  family:   4   // ← force IPv4
 });
 
 module.exports = pool;

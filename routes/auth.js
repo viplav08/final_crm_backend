@@ -14,7 +14,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const { id, name, role } = rows[0];
-    res.json({ token:'mock-token', id, name, role });
+    res.json({ token: 'mock-token', id, name, role });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
