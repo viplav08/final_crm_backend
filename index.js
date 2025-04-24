@@ -1,11 +1,10 @@
-// index.js – Final Render + Netlify CORS-Compatible Version
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 
-// ✅ CORS SETUP (Placed BEFORE everything else)
+// ✅ Apply CORS globally
 app.use(cors({
   origin: ['https://commoditiescontrolcrm.netlify.app', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -13,29 +12,35 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Preflight support for all routes
-app.options('*', cors());
+// ✅ Fallback for OPTIONS preflight that sometimes fails on Render
+app.options('*', (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  return res.sendStatus(200);
+});
 
-// ✅ Body parsing middleware
+// ✅ Parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Route imports
+// ✅ Import routes
 const customerRoutes = require('./routes/customer');
 const authRoutes = require('./routes/auth');
 const trialFollowups = require('./routes/trialFollowups');
 
-// ✅ Route mounting
+// ✅ Mount routes
 app.use('/api/customer', customerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/trial-followups', trialFollowups);
 
-// ✅ Health check
+// ✅ Root route for health check
 app.get('/', (req, res) => {
   res.status(200).send('🚀 CRM Backend Running!');
 });
 
-// ✅ Error handling middleware
+// ✅ Error handler
 app.use((err, req, res, next) => {
   console.error('Internal Server Error:', err);
   res.status(500).json({
@@ -44,7 +49,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Port binding (CRUCIAL for Render)
+// ✅ Start server (needed for Render)
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
