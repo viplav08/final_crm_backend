@@ -1,26 +1,28 @@
-// index.js
+// index.js - Final Corrected Version
 const express = require('express');
-const cors = require('cors'); // Only declare this once
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 
-// —— Enhanced CORS Setup ——
+// Enhanced CORS Configuration
+const allowedOrigins = [
+  'https://commoditiescontrolcrm.netlify.app',
+  'http://localhost:3000' // For development
+];
+
 const corsOptions = {
-  origin: [
-    'https://commoditiescontrolcrm.netlify.app',
-    'http://localhost:3000' // For local development
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Added OPTIONS
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept'
-  ],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 200
 };
 
 // Apply CORS middleware
@@ -29,27 +31,37 @@ app.use(cors(corsOptions));
 // Handle preflight requests
 app.options('*', cors(corsOptions));
 
-// —— Route Modules ——
+// Body Parsing Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Route Imports
 const customerRoutes = require('./routes/customer');
 const authRoutes = require('./routes/auth');
 const trialFollowups = require('./routes/trialFollowups');
-// ... other route imports ...
 
-// —— Mount Routers ——
-app.use(express.json()); // Parse JSON bodies
+// Mount Routes
 app.use('/api/customer', customerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/trial-followups', trialFollowups);
-// ... mount other routes ...
 
-// —— Health Check ——
-app.get('/', (req, res) => res.send('🚀 CRM Backend Running!'));
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+// Health Check Endpoint
+app.get('/', (req, res) => {
+  res.status(200).send('🚀 CRM Backend Running!');
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Internal Server Error',
+    message: err.message 
+  });
+});
+
+// Server Startup
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+});
