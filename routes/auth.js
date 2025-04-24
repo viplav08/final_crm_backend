@@ -1,9 +1,11 @@
+// routes/auth.js
 const express = require('express');
-const bcrypt = require('bcrypt');
 const pool = require('../db');
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
+  console.log("🛎️ /api/auth/login HIT"); // Log to confirm route is hit
+
   const { email, password } = req.body;
 
   try {
@@ -15,14 +17,12 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Use bcrypt to compare passwords
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
+    // ✅ SIMPLE PASSWORD MATCH (no bcrypt)
+    if (password !== user.password) {
       return res.status(401).json({ success: false, message: 'Incorrect password' });
     }
 
-    // Success
+    // ✅ Login Success
     res.json({
       success: true,
       message: 'Login successful',

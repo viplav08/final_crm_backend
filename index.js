@@ -12,7 +12,7 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Fallback for OPTIONS preflight that sometimes fails on Render
+// ✅ Fallback for OPTIONS preflight (Render sometimes fails without this)
 app.options('*', (req, res) => {
   res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
@@ -21,26 +21,32 @@ app.options('*', (req, res) => {
   return res.sendStatus(200);
 });
 
+// ✅ Logging all incoming requests
+app.use((req, res, next) => {
+  console.log(`[${req.method}] ${req.path}`);
+  next();
+});
+
 // ✅ Parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Import routes
+// ✅ Route imports
 const customerRoutes = require('./routes/customer');
 const authRoutes = require('./routes/auth');
 const trialFollowups = require('./routes/trialFollowups');
 
-// ✅ Mount routes
+// ✅ Route mounts
 app.use('/api/customer', customerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/trial-followups', trialFollowups);
 
-// ✅ Root route for health check
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.status(200).send('🚀 CRM Backend Running!');
 });
 
-// ✅ Error handler
+// ✅ Global error handler
 app.use((err, req, res, next) => {
   console.error('Internal Server Error:', err);
   res.status(500).json({
@@ -49,7 +55,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Start server (needed for Render)
+// ✅ Start server (for Render)
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
