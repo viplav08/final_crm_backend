@@ -6,19 +6,13 @@ require('dotenv').config();
 const app = express();
 
 // —— CORS Setup ——
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://commoditiescontrolcrm.netlify.app'
-];
+const cors = require('cors');
+
 app.use(cors({
-  origin(origin, cb) {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('Not allowed by CORS'), false);
-  },
+  origin: 'https://commoditiescontrolcrm.netlify.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
-
-app.use(express.json());
 
 // —— Route Modules ——
 // All of these must export via `module.exports = router`
