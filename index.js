@@ -62,3 +62,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`✅ CORS Origins: https://commoditiescontrolcrm.netlify.app, http://localhost:3000`);
 });
+
+app.get('/test-direct', (req, res) => {
+  res.send('✅ Direct test route hit');
+});
