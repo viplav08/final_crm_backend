@@ -1,10 +1,17 @@
-// routes/auth.js
+// routes/auth.js – FINAL with /login + /test + route debug
 const express = require('express');
 const pool = require('../db');
 const router = express.Router();
 
+// ✅ Route hit test
+router.get('/test', (req, res) => {
+  console.log("[DEBUG] /api/auth/test was HIT ✅");
+  res.send("✅ Auth route is working");
+});
+
+// ✅ Login Route
 router.post('/login', async (req, res) => {
-  console.log("🛎️ /api/auth/login HIT"); // Log to confirm route is hit
+  console.log("[DEBUG] POST /api/auth/login was HIT ✅");
 
   const { email, password } = req.body;
 
@@ -17,12 +24,10 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // ✅ SIMPLE PASSWORD MATCH (no bcrypt)
     if (password !== user.password) {
       return res.status(401).json({ success: false, message: 'Incorrect password' });
     }
 
-    // ✅ Login Success
     res.json({
       success: true,
       message: 'Login successful',
@@ -33,7 +38,7 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('[LOGIN ERROR]', err);
     res.status(500).json({ success: false, message: 'Login failed' });
   }
 });
