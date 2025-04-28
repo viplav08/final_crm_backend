@@ -12,7 +12,7 @@ import executiveFollowUps from './routes/executiveFollowUps.js';
 import paymentRoutes from './routes/payments.js';
 import packageRoutes from './routes/packages.js';
 import authRoutes from './routes/auth.js';
-import trialFollowUpsRoutes from './routes/trialFollowups.js';
+import trialFollowupsRoutes from './routes/trialFollowups.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 const app = express();
