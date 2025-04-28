@@ -25,8 +25,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/auth', require('./routes/auth'));
+// ✅ Route Imports
+const authRoutes = require('./routes/auth');
+const customerRoutes = require('./routes/customer');
 
+// ✅ Mount Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/customer', customerRoutes);  // 💥 THIS WAS MISSING
+
+// ✅ Test Route
 app.get('/', (req, res) => {
   res.send('🚀 Backend Live');
 });
