@@ -1,4 +1,3 @@
-// routes/trialFollowups.js
 import express from "express";
 import pool from "../db.js";
 
@@ -21,7 +20,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// PATCH update outcome (Subscribe, Unsubscribe, Follow-up)
+// PATCH: handle Subscribed / Unsubscribed / Follow up
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const {
@@ -37,23 +36,20 @@ router.patch("/:id", async (req, res) => {
     package_name,
     mrp,
     offered_price,
+    follow_up_date,
     subscription_start,
     subscription_duration_days,
     payment_amount,
-    gst_option,
-    follow_up_date,
+    gst_option
   } = req.body;
 
-  try {
-    const now = new Date();
-    const o = outcome.toLowerCase();
+  const now = new Date();
+  const o = outcome.toLowerCase();
 
-    const recordRes = await pool.query(
-      "SELECT * FROM trial_followups WHERE id = $1",
-      [id]
-    );
-    const trial = recordRes.rows[0];
-    if (!trial) return res.status(404).json({ error: "Trial record not found" });
+  try {
+    const trialRes = await pool.query("SELECT * FROM trial_followups WHERE id = $1", [id]);
+    const trial = trialRes.rows[0];
+    if (!trial) return res.status(404).json({ error: "Trial follow-up not found" });
 
     if (o === "subscribed") {
       await pool.query(
@@ -74,73 +70,92 @@ router.patch("/:id", async (req, res) => {
         [
           client_id,
           executive_id,
-          commodity,
-          package_name,
-          mrp,
-          offered_price,
-          payment_amount,
-          subscription_start || now,
+          commodity || trial.commodity,
+          package_name || trial.package_name,
+          mrp || trial.mrp,
+          offered_price || trial.offered_price,
+          payment_amount || trial.offered_price,
+          subscription_start || new Date(),
           subscription_duration_days || 30,
-          payment_mode,
-          payment_reference,
-          gst_option,
+          payment_mode || 'Cash',
+          payment_reference || '',
+          gst_option || trial.gst_option,
           id,
-          name,
-          mobile_number,
+          name || trial.name,
+          mobile_number || trial.mobile_number,
         ]
       );
 
       await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE id = $1`, [id]);
-
-      return res.json({ success: true, message: "Client subscribed from trial" });
+      return res.json({ success: true, message: "Client marked as subscribed" });
     }
 
     if (o === "unsubscribed") {
       await pool.query(
         `INSERT INTO unsubscribed_clients (
           client_id, executive_id, reason, remarks, name, mobile_number
-        ) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [client_id, executive_id, outcome, remarks, name, mobile_number]
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          client_id,
+          executive_id,
+          outcome,
+          remarks || 'Not Interested',
+          name || trial.name,
+          mobile_number || trial.mobile_number,
+        ]
       );
 
       await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE id = $1`, [id]);
-
-      return res.json({ success: true, message: "Client unsubscribed from trial" });
+      return res.json({ success: true, message: "Client marked as unsubscribed" });
     }
 
     if (o === "follow up") {
       const nextDate = follow_up_date ? new Date(follow_up_date) : now;
+
       await pool.query(
         `INSERT INTO follow_ups (
-          client_id, executive_id, package_name, mrp,
-          offered_price, follow_up_date, outcome, remarks, created_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,'Follow up',$7,$8)`,
+          client_id, executive_id, follow_up_date, outcome,
+          remarks, created_at, customer_name, mobile,
+          commodity, package_name, mrp, offered_price,
+          gst_option, trial_days, is_dropped
+        ) VALUES (
+          $1, $2, $3, 'Follow up',
+          $4, $5, $6, $7,
+          $8, $9, $10, $11,
+          $12, $13, false
+        )`,
         [
           client_id,
           executive_id,
-          package_name || trial.package_name,
-          Math.round(mrp) || trial.mrp,
-          Math.round(offered_price) || trial.offered_price,
           nextDate,
           remarks || "Auto-follow-up from trial",
           now,
+          name || trial.name,
+          mobile_number || trial.mobile_number,
+          commodity || trial.commodity,
+          package_name || trial.package_name,
+          Math.round(mrp || trial.mrp),
+          Math.round(offered_price || trial.offered_price),
+          gst_option || trial.gst_option,
+          trial.trial_days || 15,
         ]
       );
 
       await pool.query(
         "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
-        [outcome, remarks, id]
+        [outcome, remarks || 'Converted to Follow Up', id]
       );
 
       return res.json({ success: true, movedTo: "follow_ups" });
     }
 
-    // Default fallback — just update status
+    // Default: update status and remarks only
     await pool.query(
       "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
-      [outcome, remarks, id]
+      [outcome, remarks || '-', id]
     );
-    return res.json({ success: true, updated: true });
+    res.json({ success: true, updated: true });
+
   } catch (err) {
     console.error("Update trial error:", err);
     res.status(500).json({ error: "Internal server error" });
