@@ -4,12 +4,11 @@ import pool from '../db.js';
 
 const router = express.Router();
 
-// ▶️ GET /api/executive/trial-follow-ups
-//    List all “Trial” records for this executive
+// ✅ GET /api/trial-followups?executive_id=...
 router.get('/', async (req, res) => {
-  const execId = req.headers['executive-id'];
+  const execId = req.query.executive_id;
   if (!execId) {
-    return res.status(400).json({ error: 'Executive ID header is required' });
+    return res.status(400).json({ error: 'Executive ID is required' });
   }
   try {
     const { rows } = await pool.query(
@@ -27,8 +26,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ▶️ PATCH /api/executive/trial-follow-ups/:id
-//    Update a trial record’s outcome—if “Follow up”, move into follow_ups
+// ✅ PATCH /api/trial-followups/:id
 router.patch('/:id', async (req, res) => {
   const { id } = req.params;
   const {
@@ -45,7 +43,6 @@ router.patch('/:id', async (req, res) => {
   } = req.body;
 
   try {
-    // 1) Fetch existing trial
     const trialRes = await pool.query(
       'SELECT * FROM trial_followups WHERE id = $1',
       [id]
@@ -58,13 +55,11 @@ router.patch('/:id', async (req, res) => {
     const now = new Date();
     const o = outcome?.toLowerCase();
 
-    // 2) If executive marks “Follow up”, insert into follow_ups table
     if (o === 'follow up') {
       if (!client_id || !executive_id) {
         return res.status(400).json({ error: 'Missing client_id or executive_id' });
       }
 
-      // Verify customer exists
       const cust = await pool.query(
         'SELECT id FROM customer_profiles WHERE id = $1',
         [client_id]
@@ -77,7 +72,6 @@ router.patch('/:id', async (req, res) => {
       const offeredInt = Math.round(Number(offered_price) || Number(trial.offered_price) || 0);
       const nextDate   = follow_up_date ? new Date(follow_up_date) : now;
 
-      // Insert into follow_ups
       await pool.query(
         `INSERT INTO follow_ups (
            client_id, executive_id, package_name, mrp,
@@ -95,7 +89,6 @@ router.patch('/:id', async (req, res) => {
         ]
       );
 
-      // Update the trial record’s status & remarks
       await pool.query(
         'UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3',
         [outcome, remarks, id]
@@ -104,7 +97,7 @@ router.patch('/:id', async (req, res) => {
       return res.json({ success: true, movedTo: 'follow-ups' });
     }
 
-    // 3) Otherwise just update status & remarks on the trial record
+    // Otherwise just update status & remarks
     await pool.query(
       'UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3',
       [outcome, remarks, id]
