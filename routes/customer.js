@@ -1,3 +1,4 @@
+// === routes/customer.js ===
 import express from "express";
 import pool from "../db.js";
 
@@ -5,25 +6,12 @@ const router = express.Router();
 
 router.post("/customers", async (req, res) => {
   const {
-    full_name,
-    mobile_number,
-    email,
-    location,
-    state,
-    business_name,
-    business_type,
-    gst_number,
-    package_name,
-    commodity,
-    mrp,
-    offered_price,
-    subscription_duration,
-    subscription_status,
-    trial_days,
-    interest_status,
-    follow_up_date,
-    remarks,
-    assigned_executive,
+    full_name, mobile_number, email, location, state,
+    business_name, business_type, gst_number,
+    package_name, commodity, mrp, offered_price,
+    subscription_duration, subscription_status,
+    trial_days, interest_status, follow_up_date,
+    remarks, assigned_executive
   } = req.body;
 
   const executiveId = req.headers["executive-id"];
@@ -34,7 +22,6 @@ router.post("/customers", async (req, res) => {
   }
 
   try {
-    // Insert into customer_profiles
     const result = await pool.query(
       `INSERT INTO customer_profiles (
         full_name, mobile_number, email, location, state,
@@ -50,35 +37,18 @@ router.post("/customers", async (req, res) => {
         $17, $18, $19, $20
       ) RETURNING id`,
       [
-        full_name,
-        mobile_number,
-        email,
-        location,
-        state,
-        business_name,
-        business_type,
-        gst_number,
-        package_name,
-        commodity,
-        mrp,
-        offered_price,
-        subscription_duration,
-        subscription_status,
-        interest_status,
-        follow_up_date,
-        remarks,
-        assigned_executive,
-        trial_days,
-        created_at,
+        full_name, mobile_number, email, location, state,
+        business_name, business_type, gst_number, package_name,
+        commodity, mrp, offered_price, subscription_duration,
+        subscription_status, interest_status, follow_up_date,
+        remarks, assigned_executive, trial_days, created_at
       ]
     );
 
     const customerId = result.rows[0].id;
+    const gst_option = gst_number?.trim() ? "With GST" : "Without GST";
 
-    // Save trial follow-up if applicable
     if (subscription_status === "Trial") {
-      const gst_option = gst_number?.trim() ? "With GST" : "Without GST";
-
       await pool.query(
         `INSERT INTO trial_followups (
           client_id, executive_id, name, mobile_number,
@@ -92,19 +62,37 @@ router.post("/customers", async (req, res) => {
           'Trial', false, $12, $13
         )`,
         [
-          customerId,
-          executiveId,
-          full_name,
-          mobile_number,
-          commodity,
-          package_name,
-          mrp,
-          offered_price,
-          trial_days || 15,
-          gst_option,
+          customerId, executiveId, full_name, mobile_number,
+          commodity, package_name, mrp, offered_price,
+          trial_days || 15, gst_option,
           follow_up_date ? new Date(follow_up_date) : created_at,
           remarks || "Auto-generated from profile form",
-          created_at,
+          created_at
+        ]
+      );
+    }
+
+    if (subscription_status === "Follow up") {
+      await pool.query(
+        `INSERT INTO follow_ups (
+          client_id, executive_id, follow_up_date, outcome,
+          remarks, created_at, customer_name, mobile,
+          commodity, package_name, mrp, offered_price,
+          gst_option, trial_days, is_dropped
+        ) VALUES (
+          $1, $2, $3, 'Follow up',
+          $4, $5, $6, $7,
+          $8, $9, $10, $11,
+          $12, $13, false
+        )`,
+        [
+          customerId, executiveId,
+          follow_up_date ? new Date(follow_up_date) : created_at,
+          remarks || "Auto-follow-up from profile",
+          created_at, full_name, mobile_number,
+          commodity, package_name,
+          Math.round(mrp), Math.round(offered_price),
+          gst_option, trial_days || 15
         ]
       );
     }
