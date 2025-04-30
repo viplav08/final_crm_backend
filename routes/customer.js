@@ -3,7 +3,7 @@ import express from 'express';
 import pool from '../db.js';
 const router = express.Router();
 
-// ▶️ Fetch all packages
+// ✅ Fetch packages
 router.get('/packages', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM packages');
@@ -14,7 +14,7 @@ router.get('/packages', async (req, res) => {
   }
 });
 
-// ▶️ Fetch history by mobile number
+// ✅ Fetch customer history
 router.get('/history/:mobile', async (req, res) => {
   const { mobile } = req.params;
   try {
@@ -29,7 +29,7 @@ router.get('/history/:mobile', async (req, res) => {
   }
 });
 
-// ▶️ Insert new customer + trial/follow-up logic
+// ✅ Add customer and auto-route to follow-up or trial
 router.post('/customers', async (req, res) => {
   try {
     const {
@@ -43,7 +43,6 @@ router.post('/customers', async (req, res) => {
 
     const created_at = new Date();
 
-    // Insert customer profile
     const insertText = `
       INSERT INTO customer_profiles (
         full_name, mobile_number, email, location, state,
@@ -74,7 +73,7 @@ router.post('/customers', async (req, res) => {
     const { rows } = await pool.query(insertText, values);
     const customerId = rows[0].id;
 
-    // Resolve executive ID from name or use directly
+    // 🧠 Executive ID logic
     let executiveId = parseInt(assigned_executive);
     if (isNaN(executiveId)) {
       const execRes = await pool.query(
@@ -94,7 +93,7 @@ router.post('/customers', async (req, res) => {
       }
     }
 
-    // Route to follow_ups
+    // ▶️ Route to follow-ups
     if (interest_status?.toLowerCase() === 'follow up') {
       await pool.query(
         `INSERT INTO follow_ups (
@@ -111,7 +110,7 @@ router.post('/customers', async (req, res) => {
       );
     }
 
-    // Route to trial_followups
+    // ▶️ Route to trial-followups
     if (subscription_status?.toLowerCase() === 'trial') {
       await pool.query(
         `INSERT INTO trial_followups (
@@ -120,7 +119,7 @@ router.post('/customers', async (req, res) => {
            trial_days, gst_option, follow_up_date,
            status, remarks, created_at
          ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,'With GST',$10,'Trial',$11,$12
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Trial',$12,$13
          )`,
         [
           customerId,
@@ -132,7 +131,8 @@ router.post('/customers', async (req, res) => {
           mrp,
           offered_price,
           trial_days || 15,
-          follow_up_date || created_at,
+          gst_number || 'With GST',
+          follow_up_date ? new Date(follow_up_date) : created_at,
           remarks || 'Auto-generated from profile form',
           created_at
         ]
