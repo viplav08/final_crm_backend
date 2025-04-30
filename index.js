@@ -30,11 +30,10 @@ app.options('*', cors({
   credentials: true
 }));
 
-// ✅ Enable CORS with headers
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // ✅ PATCH added
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
