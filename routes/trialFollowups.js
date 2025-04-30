@@ -1,33 +1,28 @@
 // routes/trialFollowups.js
-import express from 'express';
-import pool from '../db.js';
+import express from "express";
+import pool from "../db.js";
 
 const router = express.Router();
 
-// ✅ GET /api/trial-followups?executive_id=...
-router.get('/', async (req, res) => {
-  const execId = req.query.executive_id;
-  if (!execId) {
-    return res.status(400).json({ error: 'Executive ID is required' });
-  }
+// GET all trial follow-ups for an executive
+router.get("/", async (req, res) => {
+  const { executive_id } = req.query;
   try {
-    const { rows } = await pool.query(
-      `SELECT *
-         FROM trial_followups
-        WHERE executive_id = $1
-          AND is_dropped = false
-     ORDER BY created_at DESC`,
-      [execId]
+    const result = await pool.query(
+      `SELECT * FROM trial_followups
+        WHERE executive_id = $1 AND is_dropped = false
+        ORDER BY created_at DESC`,
+      [executive_id]
     );
-    res.json(rows);
-  } catch (err) {
-    console.error('Fetch error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Fetch error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ✅ PATCH /api/trial-followups/:id
-router.patch('/:id', async (req, res) => {
+// PATCH update outcome (Subscribe, Unsubscribe, Follow-up)
+router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const {
     outcome,
@@ -36,76 +31,119 @@ router.patch('/:id', async (req, res) => {
     payment_reference,
     client_id,
     executive_id,
+    name,
+    mobile_number,
+    commodity,
     package_name,
     mrp,
     offered_price,
-    follow_up_date
+    subscription_start,
+    subscription_duration_days,
+    payment_amount,
+    gst_option,
+    follow_up_date,
   } = req.body;
 
   try {
-    const trialRes = await pool.query(
-      'SELECT * FROM trial_followups WHERE id = $1',
+    const now = new Date();
+    const o = outcome.toLowerCase();
+
+    const recordRes = await pool.query(
+      "SELECT * FROM trial_followups WHERE id = $1",
       [id]
     );
-    const trial = trialRes.rows[0];
-    if (!trial) {
-      return res.status(404).json({ error: 'Trial record not found' });
+    const trial = recordRes.rows[0];
+    if (!trial) return res.status(404).json({ error: "Trial record not found" });
+
+    if (o === "subscribed") {
+      await pool.query(
+        `INSERT INTO subscribed_clients (
+          client_id, executive_id, commodity, package_name,
+          mrp, offered_price, payment_amount,
+          subscription_start, subscription_duration_days,
+          payment_mode, payment_reference, gst_option,
+          source_type, converted_from_table, converted_from_id,
+          converted_on, name, mobile_number
+        ) VALUES (
+          $1,$2,$3,$4,
+          $5,$6,$7,
+          $8,$9,$10,$11,$12,
+          'executive','trial_followups',$13,
+          CURRENT_TIMESTAMP,$14,$15
+        )`,
+        [
+          client_id,
+          executive_id,
+          commodity,
+          package_name,
+          mrp,
+          offered_price,
+          payment_amount,
+          subscription_start || now,
+          subscription_duration_days || 30,
+          payment_mode,
+          payment_reference,
+          gst_option,
+          id,
+          name,
+          mobile_number,
+        ]
+      );
+
+      await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE id = $1`, [id]);
+
+      return res.json({ success: true, message: "Client subscribed from trial" });
     }
 
-    const now = new Date();
-    const o = outcome?.toLowerCase();
-
-    if (o === 'follow up') {
-      if (!client_id || !executive_id) {
-        return res.status(400).json({ error: 'Missing client_id or executive_id' });
-      }
-
-      const cust = await pool.query(
-        'SELECT id FROM customer_profiles WHERE id = $1',
-        [client_id]
+    if (o === "unsubscribed") {
+      await pool.query(
+        `INSERT INTO unsubscribed_clients (
+          client_id, executive_id, reason, remarks, name, mobile_number
+        ) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [client_id, executive_id, outcome, remarks, name, mobile_number]
       );
-      if (cust.rows.length === 0) {
-        return res.status(404).json({ error: 'Customer profile not found' });
-      }
 
-      const mrpInt     = Math.round(Number(mrp) || Number(trial.mrp) || 0);
-      const offeredInt = Math.round(Number(offered_price) || Number(trial.offered_price) || 0);
-      const nextDate   = follow_up_date ? new Date(follow_up_date) : now;
+      await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE id = $1`, [id]);
 
+      return res.json({ success: true, message: "Client unsubscribed from trial" });
+    }
+
+    if (o === "follow up") {
+      const nextDate = follow_up_date ? new Date(follow_up_date) : now;
       await pool.query(
         `INSERT INTO follow_ups (
-           client_id, executive_id, package_name, mrp,
-           offered_price, follow_up_date, outcome, remarks, created_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,'Follow up',$7,$8)`,
+          client_id, executive_id, package_name, mrp,
+          offered_price, follow_up_date, outcome, remarks, created_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,'Follow up',$7,$8)`,
         [
           client_id,
           executive_id,
           package_name || trial.package_name,
-          mrpInt,
-          offeredInt,
+          Math.round(mrp) || trial.mrp,
+          Math.round(offered_price) || trial.offered_price,
           nextDate,
-          remarks || 'Auto-follow-up from trial',
-          now
+          remarks || "Auto-follow-up from trial",
+          now,
         ]
       );
 
       await pool.query(
-        'UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3',
+        "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
         [outcome, remarks, id]
       );
 
-      return res.json({ success: true, movedTo: 'follow-ups' });
+      return res.json({ success: true, movedTo: "follow_ups" });
     }
 
-    // Otherwise just update status & remarks
+    // Default fallback — just update status
     await pool.query(
-      'UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3',
+      "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
       [outcome, remarks, id]
     );
-    res.json({ success: true, updated: true });
+    return res.json({ success: true, updated: true });
   } catch (err) {
-    console.error('Update trial error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Update trial error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
