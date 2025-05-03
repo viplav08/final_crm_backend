@@ -4,6 +4,7 @@ import pool from "../db.js";
 
 const router = express.Router();
 
+// Fetch trial followups for a given executive
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   try {
@@ -18,6 +19,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Update trial followup based on outcome
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const {
@@ -29,7 +31,7 @@ router.patch("/:id", async (req, res) => {
   } = req.body;
 
   const now = new Date();
-  const o = outcome.toLowerCase();
+  const o = outcome?.toLowerCase();
 
   try {
     const result = await pool.query("SELECT * FROM trial_followups WHERE id = $1", [id]);
@@ -82,7 +84,6 @@ router.patch("/:id", async (req, res) => {
          Math.round(offered_price || trial.offered_price), gst_option || trial.gst_option,
          trial.trial_days || 15]
       );
-
       await pool.query("UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3", [outcome, remarks, id]);
       return res.json({ success: true });
     }
