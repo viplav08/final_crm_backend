@@ -1,10 +1,10 @@
-// === routes/executiveFollowUps.js ===
+// routes/executiveFollowUps.js
 import express from "express";
 import pool from "../db.js";
 
 const router = express.Router();
 
-// Get all follow-up entries for an executive
+// ✅ GET follow-ups for executive
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) return res.status(400).json({ error: "Executive ID required" });
