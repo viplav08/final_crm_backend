@@ -4,7 +4,7 @@ import pool from "../db.js";
 
 const router = express.Router();
 
-// ✅ GET: Trial follow-ups for a specific executive
+// GET trial follow-ups
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) return res.status(400).json({ error: "executive_id is required" });
@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ PATCH: Update status and optionally move to follow_ups
+// PATCH: Handle status update and Follow-Up entry creation
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const {
@@ -43,20 +43,18 @@ router.patch("/:id", async (req, res) => {
     const now = new Date();
     const o = outcome?.toLowerCase();
 
+    // Insert into follow_ups table if outcome is "Follow up"
     if (o === "follow up") {
-      const custCheck = await pool.query("SELECT id FROM customer_profiles WHERE id = $1", [client_id]);
-      if (custCheck.rows.length === 0) return res.status(404).json({ error: "Customer not found" });
-
       await pool.query(
         `INSERT INTO follow_ups (
-           client_id, executive_id, package_name, mrp,
-           offered_price, follow_up_date, outcome, remarks, created_at,
-           customer_name, mobile, commodity, gst_option, trial_days
-         ) VALUES (
-           $1, $2, $3, $4,
-           $5, $6, 'Follow up', $7, $8,
-           $9, $10, $11, $12, $13
-         )`,
+          client_id, executive_id, package_name, mrp, offered_price,
+          follow_up_date, outcome, remarks, created_at,
+          customer_name, mobile, commodity, gst_option, trial_days
+        ) VALUES (
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9,
+          $10, $11, $12, $13, $14
+        )`,
         [
           client_id,
           executive_id,
@@ -64,7 +62,8 @@ router.patch("/:id", async (req, res) => {
           Math.round(Number(mrp) || Number(data.mrp) || 0),
           Math.round(Number(offered_price) || Number(data.offered_price) || 0),
           follow_up_date || data.follow_up_date || now,
-          remarks || "Auto follow-up",
+          'Follow up',
+          remarks || "Auto follow-up from Trial",
           now,
           data.name,
           data.mobile_number,
@@ -75,6 +74,7 @@ router.patch("/:id", async (req, res) => {
       );
     }
 
+    // Always update status/remarks
     await pool.query(
       "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
       [outcome, remarks, id]
