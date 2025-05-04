@@ -1,10 +1,8 @@
-// routes/executiveFollowUps.js
-
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// GET all follow-ups for an executive
+// GET follow-ups by executive_id
 router.get('/', async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -13,13 +11,15 @@ router.get('/', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id, customer_name, mobile, commodity, package, mrp, offered_price,
-              trial_days, gst, next_follow_up_date, status AS outcome, remarks
+      `SELECT 
+        id, customer_name, mobile, commodity, package_name, mrp, offered_price,
+        trial_days, gst, next_follow_up_date, status AS outcome, remarks
        FROM follow_ups
        WHERE executive_id = $1
        ORDER BY next_follow_up_date ASC`,
       [executive_id]
     );
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching follow-ups:', err);
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST a new follow-up entry (from trial or direct)
+// POST new follow-up
 router.post('/add', async (req, res) => {
   const {
     customer_id,
@@ -39,7 +39,7 @@ router.post('/add', async (req, res) => {
     customer_name,
     mobile,
     commodity,
-    package,
+    package_name,
     mrp,
     offered_price,
     trial_days,
@@ -50,9 +50,9 @@ router.post('/add', async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO follow_ups (
-        customer_id, executive_id, status, reason, mode_of_service, next_follow_up_date, 
-        customer_name, mobile, commodity, package, mrp, offered_price, trial_days, gst, remarks
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        customer_id, executive_id, status, reason, mode_of_service, next_follow_up_date,
+        customer_name, mobile, commodity, package_name, mrp, offered_price, trial_days, gst, remarks
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *`,
       [
         customer_id,
@@ -64,7 +64,7 @@ router.post('/add', async (req, res) => {
         customer_name,
         mobile,
         commodity,
-        package,
+        package_name,
         mrp,
         offered_price,
         trial_days,
@@ -72,7 +72,8 @@ router.post('/add', async (req, res) => {
         remarks
       ]
     );
-    res.json({ message: 'Follow-up saved successfully', follow_up: result.rows[0] });
+
+    res.json({ message: 'Follow-up saved', follow_up: result.rows[0] });
   } catch (err) {
     console.error('Error saving follow-up:', err);
     res.status(500).json({ error: 'Failed to save follow-up' });
