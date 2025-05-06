@@ -72,29 +72,29 @@ router.post("/customers", async (req, res) => {
       );
     }
 
-    if (subscription_status === "Follow up") {
-      await pool.query(
-        `INSERT INTO follow_ups (
-          client_id, executive_id, follow_up_date, outcome,
-          remarks, created_at, customer_name, mobile,
-          commodity, package_name, mrp, offered_price,
-          gst_option, trial_days, is_dropped
-        ) VALUES (
-          $1, $2, $3, 'Follow up',
-          $4, $5, $6, $7,
-          $8, $9, $10, $11,
-          $12, $13, false
-        )`,
-        [
-          customerId, executiveId,
-          follow_up_date ? new Date(follow_up_date) : created_at,
-          remarks || "Auto-follow-up from profile",
-          created_at, full_name, mobile_number,
-          commodity, package_name,
-          Math.round(mrp), Math.round(offered_price),
-          gst_option, trial_days || 15
-        ]
-      );
+await pool.query(
+  `INSERT INTO follow_ups (
+    client_id, executive_id, next_follow_up_date, outcome,
+    remarks, created_at, customer_name, mobile,
+    commodity, package_name, mrp, offered_price,
+    gst_option, trial_days, is_dropped
+  ) VALUES (
+    $1, $2, $3, 'Follow up',
+    $4, $5, $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, false
+  )`,
+  [
+    customerId, executiveId,
+    follow_up_date ? new Date(follow_up_date) : created_at,
+    remarks || "Auto-follow-up from profile",
+    created_at, full_name, mobile_number,
+    commodity, package_name,
+    Math.round(mrp), Math.round(offered_price),
+    gst_option, trial_days || 15
+  ]
+);
+
     }
 
     res.json({ success: true, customer_id: customerId });
