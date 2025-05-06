@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// GET follow-ups by executive_id
+// ✅ GET follow-ups by executive_id
 router.get('/', async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -24,28 +24,28 @@ router.get('/', async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching follow-ups:', err);
+    console.error('❌ Error fetching follow-ups:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST new follow-up (inserted from Trial Follow-Up or Customer Profile)
+// ✅ POST new follow-up (used from trial tab or customer form)
 router.post('/add', async (req, res) => {
   const {
     customer_id,
     executive_id,
-    outcome,                  // Follow up, Subscribed, Unsubscribed, etc.
+    outcome,
     reason,
     mode_of_service,
     next_follow_up_date,
     customer_name,
     mobile,
     commodity,
-    package_name,             // Must match DB field
+    package_name,
     mrp,
     offered_price,
     trial_days,
-    gst_option,               // Must match DB field
+    gst_option,
     remarks
   } = req.body;
 
@@ -54,7 +54,9 @@ router.post('/add', async (req, res) => {
       `INSERT INTO follow_ups (
         customer_id, executive_id, outcome, reason, mode_of_service, next_follow_up_date,
         customer_name, mobile, commodity, package_name, mrp, offered_price, trial_days, gst_option, remarks
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
+      )
       RETURNING *`,
       [
         customer_id,
@@ -77,8 +79,27 @@ router.post('/add', async (req, res) => {
 
     res.json({ message: 'Follow-up saved', follow_up: result.rows[0] });
   } catch (err) {
-    console.error('Error saving follow-up:', err);
+    console.error('❌ Error saving follow-up:', err.message);
     res.status(500).json({ error: 'Failed to save follow-up' });
+  }
+});
+
+// ✅ PATCH follow-up from FollowUpModal
+router.patch('/:id/follow-up', async (req, res) => {
+  const { follow_up_date, remarks } = req.body;
+  const id = req.params.id;
+
+  try {
+    await pool.query(
+      `UPDATE follow_ups
+       SET next_follow_up_date = $1, remarks = $2
+       WHERE id = $3`,
+      [follow_up_date, remarks || '', id]
+    );
+    res.json({ message: 'Follow-up updated' });
+  } catch (err) {
+    console.error("❌ PATCH follow-up error:", err.message);
+    res.status(500).json({ error: "Failed to update follow-up" });
   }
 });
 
