@@ -17,7 +17,11 @@ router.post("/customers", async (req, res) => {
   const executiveId = req.headers["executive-id"];
   const created_at = new Date();
 
-  if (!full_name || !mobile_number || !business_type || !commodity || !package_name || !offered_price || !subscription_status || !interest_status) {
+  if (
+    !full_name || !mobile_number || !business_type ||
+    !commodity || !package_name || !offered_price ||
+    !subscription_status || !interest_status
+  ) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -48,6 +52,7 @@ router.post("/customers", async (req, res) => {
     const customerId = result.rows[0].id;
     const gst_option = gst_number?.trim() ? "With GST" : "Without GST";
 
+    // --- Trial Entry ---
     if (subscription_status === "Trial") {
       await pool.query(
         `INSERT INTO trial_followups (
@@ -72,29 +77,30 @@ router.post("/customers", async (req, res) => {
       );
     }
 
-await pool.query(
-  `INSERT INTO follow_ups (
-    client_id, executive_id, next_follow_up_date, outcome,
-    remarks, created_at, customer_name, mobile,
-    commodity, package_name, mrp, offered_price,
-    gst_option, trial_days, is_dropped
-  ) VALUES (
-    $1, $2, $3, 'Follow up',
-    $4, $5, $6, $7,
-    $8, $9, $10, $11,
-    $12, $13, false
-  )`,
-  [
-    customerId, executiveId,
-    follow_up_date ? new Date(follow_up_date) : created_at,
-    remarks || "Auto-follow-up from profile",
-    created_at, full_name, mobile_number,
-    commodity, package_name,
-    Math.round(mrp), Math.round(offered_price),
-    gst_option, trial_days || 15
-  ]
-);
-
+    // --- Follow-Up Entry ---
+    if (subscription_status === "Follow up") {
+      await pool.query(
+        `INSERT INTO follow_ups (
+          client_id, executive_id, next_follow_up_date, outcome,
+          remarks, created_at, customer_name, mobile,
+          commodity, package_name, mrp, offered_price,
+          gst_option, trial_days, is_dropped
+        ) VALUES (
+          $1, $2, $3, 'Follow up',
+          $4, $5, $6, $7,
+          $8, $9, $10, $11,
+          $12, $13, false
+        )`,
+        [
+          customerId, executiveId,
+          follow_up_date ? new Date(follow_up_date) : created_at,
+          remarks || "Auto-follow-up from profile",
+          created_at, full_name, mobile_number,
+          commodity, package_name,
+          Math.round(mrp), Math.round(offered_price),
+          gst_option, trial_days || 15
+        ]
+      );
     }
 
     res.json({ success: true, customer_id: customerId });
