@@ -29,23 +29,23 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST new follow-up
+// POST new follow-up (inserted from Trial Follow-Up or Customer Profile)
 router.post('/add', async (req, res) => {
   const {
     customer_id,
     executive_id,
-    outcome,
+    outcome,                  // Follow up, Subscribed, Unsubscribed, etc.
     reason,
     mode_of_service,
     next_follow_up_date,
     customer_name,
     mobile,
     commodity,
-    package_name,
+    package_name,             // Must match DB field
     mrp,
     offered_price,
     trial_days,
-    gst_option,
+    gst_option,               // Must match DB field
     remarks
   } = req.body;
 
