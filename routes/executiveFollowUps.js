@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// ✅ GET follow-ups by executive_id
+// ✅ GET follow-ups
 router.get('/', async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ POST new follow-up (used from trial tab or customer form)
+// ✅ POST new follow-up
 router.post('/add', async (req, res) => {
   const {
     customer_id,
@@ -84,22 +84,37 @@ router.post('/add', async (req, res) => {
   }
 });
 
-// ✅ PATCH follow-up from FollowUpModal
+// ✅ PATCH follow-up from modal
 router.patch('/:id/follow-up', async (req, res) => {
   const { follow_up_date, remarks } = req.body;
   const id = req.params.id;
 
   try {
     await pool.query(
-      `UPDATE follow_ups
-       SET next_follow_up_date = $1, remarks = $2
-       WHERE id = $3`,
+      `UPDATE follow_ups SET next_follow_up_date = $1, remarks = $2 WHERE id = $3`,
       [follow_up_date, remarks || '', id]
     );
     res.json({ message: 'Follow-up updated' });
   } catch (err) {
     console.error("❌ PATCH follow-up error:", err.message);
     res.status(500).json({ error: "Failed to update follow-up" });
+  }
+});
+
+// ✅ PATCH unsubscribed status
+router.patch('/:id/unsubscribe', async (req, res) => {
+  const { remarks } = req.body;
+  const id = req.params.id;
+
+  try {
+    await pool.query(
+      `UPDATE follow_ups SET outcome = 'Unsubscribed', remarks = $1 WHERE id = $2`,
+      [remarks || "Unsubscribed", id]
+    );
+    res.json({ message: "Client unsubscribed successfully" });
+  } catch (err) {
+    console.error("❌ PATCH unsubscribe error:", err.message);
+    res.status(500).json({ error: "Failed to mark unsubscribed" });
   }
 });
 
