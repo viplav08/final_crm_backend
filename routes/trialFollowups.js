@@ -1,90 +1,74 @@
-// routes/trialFollowups.js
-import express from "express";
-import pool from "../db.js";
-
+// backend/routes/trialFollowups.js
+const express = require("express");
 const router = express.Router();
+const pool = require("../db");
 
-// GET trial follow-ups
+// GET all trial follow-ups for an executive
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
-  if (!executive_id) return res.status(400).json({ error: "executive_id is required" });
+  if (!executive_id) {
+    return res.status(400).json({ error: "executive_id is required" });
+  }
 
   try {
     const result = await pool.query(
-      `SELECT * FROM trial_followups WHERE executive_id = $1 AND is_dropped = false ORDER BY created_at DESC`,
+      `SELECT * FROM trial_followups WHERE executive_id = $1 ORDER BY created_at DESC`,
       [executive_id]
     );
     res.json(result.rows);
-  } catch (error) {
-    console.error("Fetch error:", error);
+  } catch (err) {
+    console.error("Error fetching trial follow-ups:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// PATCH: Handle status update and Follow-Up entry creation
-router.patch("/:id", async (req, res) => {
-  const { id } = req.params;
+// POST Follow-Up from Trial Tab to Follow-Ups Table
+router.post("/submit-followup", async (req, res) => {
   const {
-    outcome,
-    remarks,
     client_id,
     executive_id,
+    customer_name,
+    mobile,
+    commodity,
     package_name,
     mrp,
     offered_price,
-    follow_up_date
+    trial_days,
+    gst_option,
+    follow_up_date,
+    outcome,
+    remarks,
   } = req.body;
 
   try {
-    const trialRes = await pool.query("SELECT * FROM trial_followups WHERE id = $1", [id]);
-    const data = trialRes.rows[0];
-    if (!data) return res.status(404).json({ error: "Trial record not found" });
-
-    const now = new Date();
-    const o = outcome?.toLowerCase();
-
-    // Insert into follow_ups table if outcome is "Follow up"
-    if (o === "follow up") {
-      await pool.query(
-        `INSERT INTO follow_ups (
-          client_id, executive_id, package_name, mrp, offered_price,
-          follow_up_date, outcome, remarks, created_at,
-          customer_name, mobile, commodity, gst_option, trial_days
-        ) VALUES (
-          $1, $2, $3, $4, $5,
-          $6, $7, $8, $9,
-          $10, $11, $12, $13, $14
-        )`,
-        [
-          client_id,
-          executive_id,
-          package_name || data.package_name,
-          Math.round(Number(mrp) || Number(data.mrp) || 0),
-          Math.round(Number(offered_price) || Number(data.offered_price) || 0),
-          follow_up_date || data.follow_up_date || now,
-          'Follow up',
-          remarks || "Auto follow-up from Trial",
-          now,
-          data.name,
-          data.mobile_number,
-          data.commodity,
-          data.gst_option,
-          data.trial_days
-        ]
-      );
-    }
-
-    // Always update status/remarks
-    await pool.query(
-      "UPDATE trial_followups SET status = $1, remarks = $2 WHERE id = $3",
-      [outcome, remarks, id]
+    const result = await pool.query(
+      `INSERT INTO follow_ups (
+        client_id, executive_id, customer_name, mobile, commodity, package_name,
+        mrp, offered_price, trial_days, gst_option, next_follow_up_date, outcome, remarks, is_dropped, created_at
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,false,NOW()
+      ) RETURNING *`,
+      [
+        client_id,
+        executive_id,
+        customer_name,
+        mobile,
+        commodity,
+        package_name,
+        mrp,
+        offered_price,
+        trial_days,
+        gst_option,
+        new Date(follow_up_date),
+        outcome,
+        remarks,
+      ]
     );
-
-    return res.json({ success: true });
+    res.status(200).json(result.rows[0]);
   } catch (err) {
-    console.error("Trial update error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("❌ Error inserting follow-up from trial:", err);
+    res.status(500).json({ error: "Failed to insert into follow_ups" });
   }
 });
 
-export default router;
+module.exports = router;
