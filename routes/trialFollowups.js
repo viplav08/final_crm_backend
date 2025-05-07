@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET active trial follow-ups
+// ✅ GET: All active trial follow-ups for executive
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
 
@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST: Trial → Follow-Up
+// ✅ POST: Trial → Follow-Up tab entry
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,
@@ -38,7 +38,6 @@ router.post("/submit-followup", async (req, res) => {
     trial_days,
     gst_option,
     follow_up_date,
-    outcome,
     remarks
   } = req.body;
 
@@ -50,8 +49,10 @@ router.post("/submit-followup", async (req, res) => {
         trial_days, gst_option, next_follow_up_date,
         outcome, remarks, is_dropped, created_at
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,
-        $9,$10,$11,$12,$13,false,NOW()
+        $1, $2, $3, $4,
+        $5, $6, $7, $8,
+        $9, $10, $11,
+        'Follow up', $12, false, NOW()
       ) RETURNING *`,
       [
         client_id,
@@ -65,7 +66,6 @@ router.post("/submit-followup", async (req, res) => {
         trial_days,
         gst_option,
         new Date(follow_up_date),
-        outcome,
         remarks
       ]
     );
