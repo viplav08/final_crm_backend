@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// ✅ GET: All active trial follow-ups for executive
+// ✅ GET: Active trial follow-ups
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
 
@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ POST: Trial → Follow-Up tab entry
+// ✅ POST: Trial → Follow-Up tab
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,

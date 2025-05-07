@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// ✅ GET all follow-ups for an executive
+// ✅ GET all follow-ups
 router.get('/', async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -23,21 +23,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ POST a new follow-up entry
+// ✅ POST a new follow-up
 router.post('/add', async (req, res) => {
   const {
-    client_id,
-    executive_id,
-    customer_name,
-    mobile,
-    commodity,
-    package_name,
-    mrp,
-    offered_price,
-    gst_option,
-    trial_days,
-    outcome,
-    remarks,
+    client_id, executive_id, customer_name, mobile,
+    commodity, package_name, mrp, offered_price,
+    gst_option, trial_days, outcome, remarks,
     next_follow_up_date
   } = req.body;
 
@@ -68,17 +59,14 @@ router.post('/add', async (req, res) => {
 // ✅ PATCH: Subscribe client
 router.patch('/:id/subscribe', async (req, res) => {
   const {
-    client_id, executive_id, commodity, package_name,
-    package_id,
-    mrp, offered_price, subscription_start,
-    subscription_duration_days, payment_mode,
-    payment_reference, gst_option,
+    client_id, executive_id, commodity, package_name, package_id,
+    mrp, offered_price, subscription_start, subscription_duration_days,
+    payment_mode, payment_reference, gst_option,
     name, mobile_number, payment_amount
   } = req.body;
   const { id } = req.params;
 
   try {
-    // 1. Insert into subscribed_clients
     await db.query(
       `INSERT INTO subscribed_clients (
          client_id, executive_id, commodity, package_name,
@@ -87,9 +75,7 @@ router.patch('/:id/subscribe', async (req, res) => {
          gst_option, source_type, converted_from_table, converted_from_id,
          converted_on, name, mobile_number
        ) VALUES (
-         $1,$2,$3,$4,
-         $5,$6,$7,$8,
-         $9,$10,$11,
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
          $12,'executive','follow_ups',$13,
          CURRENT_TIMESTAMP,$14,$15
        )`,
@@ -101,7 +87,6 @@ router.patch('/:id/subscribe', async (req, res) => {
       ]
     );
 
-    // 2. Insert into payments
     await db.query(
       `INSERT INTO payments (
          client_id, executive_id, full_name, mobile_number,
@@ -109,9 +94,7 @@ router.patch('/:id/subscribe', async (req, res) => {
          payment_date, payment_mode, gst_option, mode_of_service,
          transaction_ref, commodity, remarks, duration_days, is_free
        ) VALUES (
-         $1,$2,$3,$4,
-         $5,$6,$7,$8,
-         $9,$10,$11,$12,
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
          $13,$14,'', $15,false
        )`,
       [
@@ -122,14 +105,8 @@ router.patch('/:id/subscribe', async (req, res) => {
       ]
     );
 
-    // 3. Remove from follow_ups
     await db.query(`DELETE FROM follow_ups WHERE id = $1`, [id]);
-
-    // 4. Mark trial_followup as dropped
-    await db.query(
-      `UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`,
-      [client_id]
-    );
+    await db.query(`UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`, [client_id]);
 
     res.json({ success: true, message: 'Client subscribed successfully' });
   } catch (err) {
@@ -147,7 +124,6 @@ router.patch('/:id/unsubscribe', async (req, res) => {
   } = req.body;
 
   try {
-    // 1. Insert into unsubscribed_clients
     await db.query(
       `INSERT INTO unsubscribed_clients (
          client_id, executive_id, name, mobile_number,
@@ -165,14 +141,8 @@ router.patch('/:id/unsubscribe', async (req, res) => {
       ]
     );
 
-    // 2. Remove from follow_ups
     await db.query(`DELETE FROM follow_ups WHERE id = $1`, [id]);
-
-    // 3. Mark trial_followup as dropped
-    await db.query(
-      `UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`,
-      [client_id]
-    );
+    await db.query(`UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`, [client_id]);
 
     res.json({ success: true, message: 'Client unsubscribed successfully' });
   } catch (err) {
