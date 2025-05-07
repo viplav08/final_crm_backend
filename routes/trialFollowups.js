@@ -1,9 +1,10 @@
-// backend/routes/trialFollowups.js
+// routes/trialFollowups.js
+
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET all trial follow-ups for an executive
+// ✅ GET all trial follow-ups for an executive (filtered)
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -12,17 +13,20 @@ router.get("/", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM trial_followups WHERE executive_id = $1 ORDER BY created_at DESC`,
+      `SELECT *
+         FROM trial_followups
+        WHERE executive_id = $1
+     ORDER BY created_at DESC`,
       [executive_id]
     );
     res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching trial follow-ups:", err);
+    console.error("❌ Error fetching trial follow-ups:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST Follow-Up from Trial Tab to Follow-Ups Table
+// ✅ POST: Submit Follow-Up from Trial tab into main follow_ups table
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,
@@ -37,14 +41,15 @@ router.post("/submit-followup", async (req, res) => {
     gst_option,
     follow_up_date,
     outcome,
-    remarks,
+    remarks
   } = req.body;
 
   try {
     const result = await pool.query(
       `INSERT INTO follow_ups (
         client_id, executive_id, customer_name, mobile, commodity, package_name,
-        mrp, offered_price, trial_days, gst_option, next_follow_up_date, outcome, remarks, is_dropped, created_at
+        mrp, offered_price, trial_days, gst_option, next_follow_up_date,
+        outcome, remarks, is_dropped, created_at
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,false,NOW()
       ) RETURNING *`,
@@ -61,7 +66,7 @@ router.post("/submit-followup", async (req, res) => {
         gst_option,
         new Date(follow_up_date),
         outcome,
-        remarks,
+        remarks
       ]
     );
     res.status(200).json(result.rows[0]);
