@@ -127,7 +127,7 @@ router.patch('/:id/unsubscribe', async (req, res) => {
     await db.query(
       `INSERT INTO unsubscribed_clients (
          client_id, executive_id, name, mobile_number,
-         reason, remarks, unsubscribed_on
+         reason, remarks, unsubscribed_at
        ) VALUES (
          $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
        )`,
