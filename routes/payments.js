@@ -1,54 +1,55 @@
+// routes/payments.js
 const express = require('express');
+const router = express.Router();
 const pool = require('../db');
 
-const router = express.Router();
-
-// ✅ POST /api/payments/add — Render-compatible, full version
+// POST /api/payments/add
 router.post('/add', async (req, res) => {
   try {
     const {
-      client_id,              // ✅ For Render DB — replaces customer_id
+      client_id,
       executive_id,
-      full_name,
-      mobile_number,
-      package_name,
-      package_id,             // Optional
-      payment_amount,
-      invoice_number,
-      payment_date,
       payment_mode,
-      gst_option,
+      payment_amount,
+      payment_date,
+      invoice_number,
+      is_free = false,
+      mobile_number,
+      package_id,
+      package_name,
       mode_of_service,
-      transaction_ref,
-      commodity,
+      full_name,
+      gst_option,
       remarks,
       duration_days,
-      is_free = false         // Optional: default to false
+      transaction_ref,
+      commodity
     } = req.body;
 
-    const result = await pool.query(
-      `INSERT INTO payments (
-        client_id, executive_id, full_name, mobile_number,
-        package_name, package_id, payment_amount, invoice_number,
-        payment_date, payment_mode, gst_option, mode_of_service,
-        transaction_ref, commodity, remarks, duration_days, is_free
+    const query = `
+      INSERT INTO payments (
+        client_id, executive_id, payment_mode, payment_amount, payment_date, invoice_number,
+        is_free, mobile_number, package_id, package_name, mode_of_service, full_name,
+        gst_option, remarks, duration_days, transaction_ref, commodity
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,
-        $9,$10,$11,$12,
-        $13,$14,$15,$16,$17
-      ) RETURNING *`,
-      [
-        client_id, executive_id, full_name, mobile_number,
-        package_name, package_id || null, payment_amount, invoice_number,
-        payment_date, payment_mode, gst_option, mode_of_service,
-        transaction_ref, commodity, remarks, duration_days, is_free
-      ]
-    );
+        $1, $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11, $12,
+        $13, $14, $15, $16, $17
+      )
+      RETURNING *
+    `;
 
-    res.json({ message: "✅ Payment recorded", payment: result.rows[0] });
-  } catch (err) {
-    console.error("❌ Payment add error:", err.message);
-    res.status(500).json({ error: "Failed to record payment" });
+    const values = [
+      client_id, executive_id, payment_mode, payment_amount, payment_date, invoice_number,
+      is_free, mobile_number, package_id, package_name, mode_of_service, full_name,
+      gst_option, remarks, duration_days, transaction_ref, commodity
+    ];
+
+    const result = await pool.query(query, values);
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Payment add error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
