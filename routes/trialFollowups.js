@@ -1,10 +1,8 @@
-// routes/trialFollowups.js
-
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// ✅ GET all trial follow-ups (only active)
+// GET active trial follow-ups
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
 
@@ -26,7 +24,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ POST from trial tab into follow_ups
+// POST: Trial → Follow-Up
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,

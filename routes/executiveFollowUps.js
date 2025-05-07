@@ -65,7 +65,7 @@ router.post('/add', async (req, res) => {
   }
 });
 
-// ✅ PATCH: Subscribe client
+// PATCH: Subscribe client
 router.patch('/:id/subscribe', async (req, res) => {
   const {
     client_id, executive_id, commodity, package_name,
@@ -78,7 +78,7 @@ router.patch('/:id/subscribe', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Save into subscribed_clients
+    // 1. Insert into subscribed_clients
     await db.query(
       `INSERT INTO subscribed_clients (
          client_id, executive_id, commodity, package_name,
@@ -101,7 +101,7 @@ router.patch('/:id/subscribe', async (req, res) => {
       ]
     );
 
-    // 2. Save into payments
+    // 2. Insert into payments
     await db.query(
       `INSERT INTO payments (
          client_id, executive_id, full_name, mobile_number,
@@ -125,7 +125,7 @@ router.patch('/:id/subscribe', async (req, res) => {
     // 3. Remove from follow_ups
     await db.query(`DELETE FROM follow_ups WHERE id = $1`, [id]);
 
-    // 4. Mark as dropped from trial_followups
+    // 4. Mark trial_followup as dropped
     await db.query(
       `UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`,
       [client_id]
@@ -138,7 +138,7 @@ router.patch('/:id/subscribe', async (req, res) => {
   }
 });
 
-// ✅ PATCH: Unsubscribe client (drop follow-up)
+// PATCH: Unsubscribe client
 router.patch('/:id/unsubscribe', async (req, res) => {
   const { id } = req.params;
   const { client_id } = req.body;
