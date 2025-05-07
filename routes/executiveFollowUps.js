@@ -120,7 +120,7 @@ router.patch('/:id/unsubscribe', async (req, res) => {
   const { id } = req.params;
   const {
     client_id, executive_id, reason, remarks,
-    name, mobile_number
+    name, customer_name, mobile_number
   } = req.body;
 
   try {
@@ -134,7 +134,7 @@ router.patch('/:id/unsubscribe', async (req, res) => {
       [
         client_id,
         executive_id,
-        name || '',
+        name || customer_name || '', // ✅ ensures name is never blank
         mobile_number || '',
         reason || 'Other',
         remarks || ''
