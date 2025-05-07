@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// ✅ GET all trial follow-ups for an executive (excluding dropped)
+// ✅ GET: Only active trial follow-ups (not dropped)
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -19,14 +19,14 @@ router.get("/", async (req, res) => {
        ORDER BY created_at DESC`,
       [executive_id]
     );
-    res.json(result.rows);
+    res.status(200).json(result.rows);
   } catch (err) {
     console.error("❌ Error fetching trial follow-ups:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ✅ POST: Submit Follow-Up from Trial tab into main follow_ups table
+// ✅ POST: Submit Follow-Up from Trial tab to Follow-Up table
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,
