@@ -61,8 +61,8 @@ router.post("/submit-followup", async (req, res) => {
         mobile,
         commodity,
         package_name,
-        mrp,
-        offered_price,
+        parseInt(mrp),             // ✅ Fix: cast to integer
+        parseInt(offered_price),   // ✅ Fix: cast to integer
         trial_days,
         gst_option,
         new Date(follow_up_date),
