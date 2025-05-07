@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// ✅ GET all trial follow-ups for an executive (filtered)
+// ✅ GET all trial follow-ups for an executive (excluding dropped)
 router.get("/", async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -14,9 +14,9 @@ router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT *
-         FROM trial_followups
-        WHERE executive_id = $1
-     ORDER BY created_at DESC`,
+       FROM trial_followups
+       WHERE executive_id = $1 AND is_dropped = false
+       ORDER BY created_at DESC`,
       [executive_id]
     );
     res.json(result.rows);
