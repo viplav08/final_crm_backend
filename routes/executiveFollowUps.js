@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// GET all follow-ups for an executive
+// ✅ GET all follow-ups for an executive
 router.get('/', async (req, res) => {
   const { executive_id } = req.query;
   if (!executive_id) {
@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST a new follow-up entry
+// ✅ POST a new follow-up entry
 router.post('/add', async (req, res) => {
   const {
     client_id,
@@ -65,7 +65,7 @@ router.post('/add', async (req, res) => {
   }
 });
 
-// PATCH: Subscribe client
+// ✅ PATCH: Subscribe client
 router.patch('/:id/subscribe', async (req, res) => {
   const {
     client_id, executive_id, commodity, package_name,
@@ -138,14 +138,37 @@ router.patch('/:id/subscribe', async (req, res) => {
   }
 });
 
-// PATCH: Unsubscribe client
+// ✅ PATCH: Unsubscribe client
 router.patch('/:id/unsubscribe', async (req, res) => {
   const { id } = req.params;
-  const { client_id } = req.body;
+  const {
+    client_id, executive_id, reason, remarks,
+    name, mobile_number
+  } = req.body;
 
   try {
+    // 1. Insert into unsubscribed_clients
+    await db.query(
+      `INSERT INTO unsubscribed_clients (
+         client_id, executive_id, name, mobile_number,
+         reason, remarks, unsubscribed_on
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
+       )`,
+      [
+        client_id,
+        executive_id,
+        name || '',
+        mobile_number || '',
+        reason || 'Other',
+        remarks || ''
+      ]
+    );
+
+    // 2. Remove from follow_ups
     await db.query(`DELETE FROM follow_ups WHERE id = $1`, [id]);
 
+    // 3. Mark trial_followup as dropped
     await db.query(
       `UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`,
       [client_id]
