@@ -17,7 +17,8 @@ const getDateCondition = (period, dateColumn = 'created_at') => {
     case 'month':
       return `AND ${dateColumn} >= date_trunc('month', now()) AND ${dateColumn} < (date_trunc('month', now()) + interval '1 month')`;
     default:
-      return ''; // Should not happen if period is validated
+      console.warn(`getDateCondition called with unrecognized period: ${period}. Returning empty condition.`);
+      return ''; 
   }
 };
 
@@ -34,29 +35,19 @@ router.get('/', async (req, res) => {
     const trialsWeekQuery = `SELECT COUNT(*)::int AS count FROM trial_followups WHERE executive_id=$1 AND is_dropped = false ${getDateCondition('week', 'created_at')}`;
     const trialsMonthQuery = `SELECT COUNT(*)::int AS count FROM trial_followups WHERE executive_id=$1 AND is_dropped = false ${getDateCondition('month', 'created_at')}`;
 
-    // --- Subscribed/Converted (from customer_profiles) ---
-    // Counts customers assigned to the executive, marked as 'Subscribed',
-    // and whose profile (or subscription status update) occurred within the period.
-    // ASSUMPTION: 'created_at' in customer_profiles reflects the relevant date for this status.
-    // If you have a `subscription_date` or `status_updated_at`, use that instead of 'created_at'.
-    const subscribedTodayQuery = `SELECT COUNT(*)::int AS count FROM customer_profiles WHERE assigned_executive=$1 AND subscription_status = 'Subscribed' ${getDateCondition('today', 'created_at')}`;
-    const subscribedWeekQuery = `SELECT COUNT(*)::int AS count FROM customer_profiles WHERE assigned_executive=$1 AND subscription_status = 'Subscribed' ${getDateCondition('week', 'created_at')}`;
-    const subscribedMonthQuery = `SELECT COUNT(*)::int AS count FROM customer_profiles WHERE assigned_executive=$1 AND subscription_status = 'Subscribed' ${getDateCondition('month', 'created_at')}`;
-    
-    // ALTERNATIVE for Subscribed (if you use 'subscribed_clients' table and want to count conversions by conversion date):
-    // const subscribedTodayQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('today', 'converted_on')}`;
-    // const subscribedWeekQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('week', 'converted_on')}`;
-    // const subscribedMonthQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('month', 'converted_on')}`;
+    // --- Subscribed/Converted (from subscribed_clients table) ---
+    // Counts clients newly subscribed/converted by the executive within the period.
+    const subscribedTodayQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('today', 'converted_on')}`;
+    const subscribedWeekQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('week', 'converted_on')}`;
+    const subscribedMonthQuery = `SELECT COUNT(*)::int AS count FROM subscribed_clients WHERE executive_id=$1 ${getDateCondition('month', 'converted_on')}`;
 
-
-    // --- Unsubscribed/Dropped ---
-    // Counts entries from the 'unsubscribed_clients' table for more direct tracking.
-    // ASSUMPTION: 'unsubscribed_at' reflects when they were marked as unsubscribed.
+    // --- Unsubscribed/Dropped (from unsubscribed_clients table) ---
+    // Counts clients newly unsubscribed by the executive within the period.
     const droppedTodayQuery = `SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 ${getDateCondition('today', 'unsubscribed_at')}`;
     const droppedWeekQuery = `SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 ${getDateCondition('week', 'unsubscribed_at')}`;
     const droppedMonthQuery = `SELECT COUNT(*)::int AS count FROM unsubscribed_clients WHERE executive_id=$1 ${getDateCondition('month', 'unsubscribed_at')}`;
     
-    // --- Revenue (from payments) ---
+    // --- Revenue (from payments table) ---
     // Sums payment_amount for payments captured within the period by the executive.
     const revenueTodayQuery = `SELECT COALESCE(SUM(payment_amount),0)::numeric AS sum FROM payments WHERE executive_id=$1 ${getDateCondition('today', 'captured_at')}`;
     const revenueWeekQuery = `SELECT COALESCE(SUM(payment_amount),0)::numeric AS sum FROM payments WHERE executive_id=$1 ${getDateCondition('week', 'captured_at')}`;
@@ -108,7 +99,7 @@ router.get('/', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('❌ Dashboard error:', err.message, err.stack); // Added err.stack for more details
+    console.error('❌ Dashboard error:', err.message, err.stack);
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
