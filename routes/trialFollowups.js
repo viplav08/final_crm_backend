@@ -25,38 +25,39 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ POST: Trial → Follow-Up tab
+// ✅ POST: Trial → Follow-Up tab (CORRECTED LOGIC)
+// When a follow-up is created from a trial, the original trial entry REMAINS ACTIVE.
+// It only becomes inactive (is_dropped=true) if the client subscribes or unsubscribes.
 router.post("/submit-followup", async (req, res) => {
   const {
     client_id,
     executive_id,
-    customer_name, // This should ideally be 'name' to be consistent, or map 'name' from frontend to this
+    customer_name, // Ensure frontend sends 'customer_name' or maps 'name' to this
     mobile,
     commodity,
     package_name,
     mrp,
     offered_price,
-    trial_days,
+    trial_days, // This is from the original trial_followups entry
     gst_option,
-    follow_up_date,
-    remarks
+    follow_up_date, // This is the *new* next_follow_up_date for the follow_ups table
+    remarks          // Remarks for the new follow_ups entry
   } = req.body;
 
-  // Basic validation
   if (!client_id || !executive_id || !customer_name || !mobile || !follow_up_date) {
     return res.status(400).json({ error: "Missing required fields for submitting follow-up." });
   }
   
-  let parsedMrp = mrp !== null && mrp !== undefined && mrp !== '' ? parseFloat(mrp) : null;
-  let parsedOfferedPrice = offered_price !== null && offered_price !== undefined && offered_price !== '' ? parseFloat(offered_price) : null;
+  let parsedMrp = mrp !== null && mrp !== undefined && String(mrp).trim() !== '' ? parseFloat(mrp) : null;
+  let parsedOfferedPrice = offered_price !== null && offered_price !== undefined && String(offered_price).trim() !== '' ? parseFloat(offered_price) : null;
 
-  if ((mrp !== null && mrp !== undefined && mrp !== '' && isNaN(parsedMrp)) || 
-      (offered_price !== null && offered_price !== undefined && offered_price !== '' && isNaN(parsedOfferedPrice))) {
+  if ((mrp !== null && mrp !== undefined && String(mrp).trim() !== '' && isNaN(parsedMrp)) || 
+      (offered_price !== null && offered_price !== undefined && String(offered_price).trim() !== '' && isNaN(parsedOfferedPrice))) {
     return res.status(400).json({ error: "Invalid MRP or Offered Price format." });
   }
 
-
   try {
+    // Insert a NEW entry into follow_ups table
     const result = await pool.query(
       `INSERT INTO follow_ups (
         client_id, executive_id, customer_name, mobile,
@@ -67,28 +68,26 @@ router.post("/submit-followup", async (req, res) => {
         $1, $2, $3, $4,
         $5, $6, $7, $8,
         $9, $10, $11,
-        'Follow up', $12, false, NOW()
+        'Follow up', $12, false, NOW() /* New follow-up is active */
       ) RETURNING *`,
       [
         client_id,
         executive_id,
-        customer_name, // Ensure frontend sends this as 'customer_name' or 'name' which is then mapped
+        customer_name,
         mobile,
         commodity,
         package_name,
         parsedMrp,
         parsedOfferedPrice,
-        trial_days ? parseInt(trial_days) : null,
+        trial_days ? parseInt(trial_days) : null, // trial_days from the original trial
         gst_option,
-        new Date(follow_up_date), // Ensure follow_up_date is a valid date string
+        new Date(follow_up_date), // The new follow-up date for this interaction
         remarks
       ]
     );
-    // After creating a follow-up, mark the original trial as dropped
-    await pool.query(
-        `UPDATE trial_followups SET is_dropped = true WHERE client_id = $1 AND executive_id = $2 AND is_dropped = false`, // Be specific if multiple trials exist
-        [client_id, executive_id]
-    );
+
+    // The original trial_followups entry is NOT marked as dropped here.
+    // It remains active and visible.
 
     res.status(200).json(result.rows[0]);
   } catch (err) {
@@ -97,7 +96,7 @@ router.post("/submit-followup", async (req, res) => {
   }
 });
 
-// ✅ NEW: PATCH Subscribe client from trial_followups
+// ✅ PATCH: Subscribe client from trial_followups
 router.patch('/:id/subscribe', async (req, res) => {
   const {
     client_id, executive_id, commodity, package_name, package_id,
@@ -109,6 +108,9 @@ router.patch('/:id/subscribe', async (req, res) => {
 
   if (!client_id) {
     return res.status(400).json({ error: 'client_id is required in the request body.' });
+  }
+  if (!executive_id) {
+    return res.status(400).json({ error: 'executive_id is required.' });
   }
 
   try {
@@ -147,15 +149,15 @@ router.patch('/:id/subscribe', async (req, res) => {
       [
         client_id, executive_id, name, mobile_number,
         package_name, package_id, payment_amount, payment_reference,
-        subscription_start, payment_mode, gst_option, 'WhatsApp',
+        subscription_start, payment_mode, gst_option, 'WhatsApp', // Default mode_of_service
         payment_reference, commodity, subscription_duration_days
       ]
     );
 
-    // Mark all trial_followups for this client_id as dropped
+    // Mark ALL trial_followups for this client_id as dropped
     await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`, [client_id]);
     
-    // Mark all follow-ups for this client_id as dropped
+    // Mark ALL regular follow-ups for this client_id as dropped
     await pool.query(`UPDATE follow_ups SET is_dropped = true WHERE client_id = $1`, [client_id]);
 
     res.json({ success: true, message: 'Client subscribed successfully from trial' });
@@ -165,13 +167,13 @@ router.patch('/:id/subscribe', async (req, res) => {
   }
 });
 
-// ✅ NEW: PATCH Unsubscribe client from trial_followups
+// ✅ PATCH: Unsubscribe client from trial_followups
 router.patch('/:id/unsubscribe', async (req, res) => {
   const {
     client_id, executive_id, reason, remarks,
     name, mobile_number
   } = req.body;
-  const { id } = req.params; // This is trial_followups.id
+  // const { id } = req.params; // id of the trial_followups record, not strictly needed for DB updates here but good for logging/context
 
   if (!client_id) {
     return res.status(400).json({ error: 'client_id is required in the request body.' });
@@ -195,9 +197,9 @@ router.patch('/:id/unsubscribe', async (req, res) => {
       ]
     );
 
-    // Mark all trial_followups for this client_id as dropped
+    // Mark ALL trial_followups for this client_id as dropped
     await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`, [client_id]);
-    // Mark all regular follow-ups for this client_id as dropped
+    // Mark ALL regular follow-ups for this client_id as dropped
     await pool.query(`UPDATE follow_ups SET is_dropped = true WHERE client_id = $1`, [client_id]);
 
     res.json({ success: true, message: 'Client unsubscribed successfully from trial' });
