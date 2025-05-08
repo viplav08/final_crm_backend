@@ -1,80 +1,78 @@
+// --- START OF FILE trialFollowups.js ---
 const express = require("express");
 const router = express.Router();
-const pool = require("../db");
+const pool = require("../db"); // Assuming pool is your db connection
 
-// ✅ GET: Active trial follow-ups
-router.get("/", async (req, res) => {
-  const { executive_id } = req.query;
+// ... (router.get("/") and router.post("/submit-followup") remain the same) ...
 
-  if (!executive_id) {
-    return res.status(400).json({ error: "executive_id is required" });
-  }
-
-  try {
-    const result = await pool.query(
-      `SELECT * FROM trial_followups
-       WHERE executive_id = $1 AND is_dropped = false
-       ORDER BY created_at DESC`,
-      [executive_id]
-    );
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error("❌ Error fetching trial follow-ups:", err.message);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ✅ POST: Trial → Follow-Up tab
-router.post("/submit-followup", async (req, res) => {
+// ✅ NEW: PATCH Subscribe client from trial_followups
+router.patch('/:id/subscribe', async (req, res) => {
   const {
-    client_id,
-    executive_id,
-    customer_name,
-    mobile,
-    commodity,
-    package_name,
-    mrp,
-    offered_price,
-    trial_days,
-    gst_option,
-    follow_up_date,
-    remarks
+    client_id, executive_id, commodity, package_name, package_id, // Ensure package_id is passed if needed
+    mrp, offered_price, subscription_start, subscription_duration_days,
+    payment_mode, payment_reference, gst_option,
+    name, mobile_number, payment_amount
   } = req.body;
+  const { id } = req.params; // This is trial_followups.id, used for converted_from_id
+
+  if (!client_id) {
+    return res.status(400).json({ error: 'client_id is required in the request body.' });
+  }
 
   try {
-    const result = await pool.query(
-      `INSERT INTO follow_ups (
-        client_id, executive_id, customer_name, mobile,
-        commodity, package_name, mrp, offered_price,
-        trial_days, gst_option, next_follow_up_date,
-        outcome, remarks, is_dropped, created_at
-      ) VALUES (
-        $1, $2, $3, $4,
-        $5, $6, $7, $8,
-        $9, $10, $11,
-        'Follow up', $12, false, NOW()
-      ) RETURNING *`,
+    // Insert into subscribed_clients
+    await pool.query(
+      `INSERT INTO subscribed_clients (
+         client_id, executive_id, commodity, package_name,
+         mrp, offered_price, payment_amount, subscription_start,
+         subscription_duration_days, payment_mode, payment_reference,
+         gst_option, source_type, converted_from_table, converted_from_id,
+         converted_on, name, mobile_number
+       ) VALUES (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+         $12,'executive','trial_followups',$13, /* Source is trial_followups */
+         CURRENT_TIMESTAMP,$14,$15
+       )`,
       [
-        client_id,
-        executive_id,
-        customer_name,
-        mobile,
-        commodity,
-        package_name,
-        parseInt(mrp),             // ✅ Fix: cast to integer
-        parseInt(offered_price),   // ✅ Fix: cast to integer
-        trial_days,
-        gst_option,
-        new Date(follow_up_date),
-        remarks
+        client_id, executive_id, commodity, package_name,
+        mrp, offered_price, payment_amount, subscription_start,
+        subscription_duration_days, payment_mode, payment_reference,
+        gst_option, id, name, mobile_number
       ]
     );
 
-    res.status(200).json(result.rows[0]);
+    // Insert into payments
+    await pool.query(
+      `INSERT INTO payments (
+         client_id, executive_id, full_name, mobile_number,
+         package_name, package_id, payment_amount, invoice_number,
+         payment_date, payment_mode, gst_option, mode_of_service,
+         transaction_ref, commodity, remarks, duration_days, is_free
+       ) VALUES (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+         $13,$14,'', $15,false
+       )`,
+      [
+        client_id, executive_id, name, mobile_number,
+        package_name, package_id, payment_amount, payment_reference, // Assuming payment_reference is used as invoice_number
+        subscription_start, payment_mode, gst_option, 'WhatsApp', // Assuming default mode_of_service
+        payment_reference, commodity, subscription_duration_days
+      ]
+    );
+
+    // Mark all trial_followups for this client_id as dropped
+    await pool.query(`UPDATE trial_followups SET is_dropped = true WHERE client_id = $1`, [client_id]);
+    
+    // Mark all follow-ups for this client_id as dropped
+    await pool.query(`UPDATE follow_ups SET is_dropped = true WHERE client_id = $1`, [client_id]);
+
+    res.json({ success: true, message: 'Client subscribed successfully from trial' });
   } catch (err) {
-    console.error("❌ Error inserting follow-up from trial:", err.message);
-    res.status(500).json({ error: "Failed to insert into follow_ups" });
+    console.error('❌ Subscription error (from trial_followups):', err.message);
+    res.status(500).json({ error: 'Subscription from trial failed' });
   }
 });
 
+
 module.exports = router;
+// --- END OF FILE trialFollowups.js ---
